@@ -16,6 +16,7 @@ Route::middleware(\App\Http\Middleware\AuthenticateDashboard::class)->group(func
 
     Route::get('/deploy', [DeployController::class, 'index'])->name('deploy');
     Route::post('/deploy', [DeployController::class, 'deploy'])->name('deploy.run');
+    Route::get('/deploy/status/{id}', [DeployController::class, 'status'])->name('deploy.status');
 
     Route::get('/services', [ServicesController::class, 'index'])->name('services');
     Route::get('/api/services/{unit}/status', [ServicesController::class, 'status'])->name('services.status');

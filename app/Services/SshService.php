@@ -21,7 +21,7 @@ class SshService
         $user    = config('dashboard.ssh.user');
         $keyPath = config('dashboard.ssh.key_path');
 
-        $ssh = new SSH2($host, $port);
+        $ssh = new SSH2($host, $port, 300);
 
         if (file_exists($keyPath)) {
             $key = PublicKeyLoader::load(file_get_contents($keyPath));
@@ -83,18 +83,44 @@ class SshService
         return $projects;
     }
 
-    public function runDeploy(string $deployScript): array
+    public function startDeploy(string $deployScript): string
     {
         $allowedPattern = '/^\/var\/www\/[a-zA-Z0-9_\-]+\/deploy\.sh$/';
         if (!preg_match($allowedPattern, $deployScript)) {
             throw new RuntimeException('Deploy script path not allowed.');
         }
 
-        $ssh    = $this->connect();
-        $output = $ssh->exec("bash " . escapeshellarg($deployScript) . " 2>&1");
-        $exit   = $ssh->getExitStatus();
+        $id      = 'deploy_' . bin2hex(random_bytes(8));
+        $log     = "/tmp/{$id}.log";
+        $exitFile = "/tmp/{$id}.exit";
 
-        return ['output' => $output, 'success' => $exit === 0];
+        $ssh = $this->connect();
+        $ssh->exec("nohup bash " . escapeshellarg($deployScript) . " > " . escapeshellarg($log) . " 2>&1; echo \$? > " . escapeshellarg($exitFile) . " &");
+
+        return $id;
+    }
+
+    public function getDeployStatus(string $id): array
+    {
+        if (!preg_match('/^deploy_[a-f0-9]{16}$/', $id)) {
+            throw new RuntimeException('Invalid deploy ID.');
+        }
+
+        $log      = "/tmp/{$id}.log";
+        $exitFile = "/tmp/{$id}.exit";
+
+        $ssh      = $this->connect();
+        $output   = $ssh->exec("cat " . escapeshellarg($log) . " 2>/dev/null");
+        $exitCode = trim($ssh->exec("cat " . escapeshellarg($exitFile) . " 2>/dev/null"));
+
+        $done    = $exitCode !== '';
+        $success = $done && $exitCode === '0';
+
+        if ($done) {
+            $ssh->exec("rm -f " . escapeshellarg($log) . " " . escapeshellarg($exitFile));
+        }
+
+        return ['output' => $output, 'done' => $done, 'success' => $success];
     }
 
     public function getServiceStatus(string $unit): string

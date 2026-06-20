@@ -38,21 +38,31 @@ class DeployController extends Controller
         $deployScript = '/var/www/' . $request->project_name . '/deploy.sh';
 
         try {
-            $result = $this->ssh->runDeploy($deployScript);
-            $output = $result['output'];
-            $status = $result['success'] ? 'success' : 'failed';
+            $id = $this->ssh->startDeploy($deployScript);
+            return response()->json(['id' => $id, 'project_name' => $request->project_name]);
         } catch (\Throwable $e) {
-            $output = $e->getMessage();
-            $status = 'failed';
+            return response()->json(['error' => $e->getMessage()], 500);
         }
+    }
 
-        DeploymentLog::create([
-            'project_name' => $request->project_name,
-            'branch'       => 'main',
-            'status'       => $status,
-            'output'       => $output,
-        ]);
+    public function status(Request $request, string $id): JsonResponse
+    {
+        try {
+            $result = $this->ssh->getDeployStatus($id);
 
-        return response()->json(['success' => $status === 'success', 'output' => $output]);
+            if ($result['done']) {
+                $projectName = $request->query('project');
+                DeploymentLog::create([
+                    'project_name' => $projectName ?? 'unknown',
+                    'branch'       => 'main',
+                    'status'       => $result['success'] ? 'success' : 'failed',
+                    'output'       => $result['output'],
+                ]);
+            }
+
+            return response()->json($result);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 }
