@@ -83,15 +83,18 @@ class SshService
         return $projects;
     }
 
-    public function runDeploy(string $deployScript): string
+    public function runDeploy(string $deployScript): array
     {
         $allowedPattern = '/^\/var\/www\/[a-zA-Z0-9_\-]+\/deploy\.sh$/';
         if (!preg_match($allowedPattern, $deployScript)) {
             throw new RuntimeException('Deploy script path not allowed.');
         }
 
-        $ssh = $this->connect();
-        return $ssh->exec("bash " . escapeshellarg($deployScript) . " 2>&1");
+        $ssh    = $this->connect();
+        $output = $ssh->exec("bash " . escapeshellarg($deployScript) . " 2>&1");
+        $exit   = $ssh->getExitStatus();
+
+        return ['output' => $output, 'success' => $exit === 0];
     }
 
     public function getServiceStatus(string $unit): string

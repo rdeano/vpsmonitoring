@@ -38,8 +38,9 @@ class DeployController extends Controller
         $deployScript = '/var/www/' . $request->project_name . '/deploy.sh';
 
         try {
-            $output = $this->ssh->runDeploy($deployScript);
-            $status = str_contains(strtolower($output), 'error') ? 'failed' : 'success';
+            $result = $this->ssh->runDeploy($deployScript);
+            $output = $result['output'];
+            $status = $result['success'] ? 'success' : 'failed';
         } catch (\Throwable $e) {
             $output = $e->getMessage();
             $status = 'failed';
