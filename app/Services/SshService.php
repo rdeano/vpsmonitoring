@@ -16,10 +16,10 @@ class SshService
             return $this->connection;
         }
 
-        $host    = config('app.ssh_host', env('DASHBOARD_SSH_HOST', '127.0.0.1'));
-        $port    = (int) env('DASHBOARD_SSH_PORT', 22);
-        $user    = env('DASHBOARD_SSH_USER', 'ubuntu');
-        $keyPath = env('DASHBOARD_SSH_KEY_PATH', '/home/ubuntu/.ssh/id_rsa');
+        $host    = config('dashboard.ssh.host');
+        $port    = config('dashboard.ssh.port');
+        $user    = config('dashboard.ssh.user');
+        $keyPath = config('dashboard.ssh.key_path');
 
         $ssh = new SSH2($host, $port);
 
