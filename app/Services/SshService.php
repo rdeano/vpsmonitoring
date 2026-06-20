@@ -53,6 +53,36 @@ class SshService
         ];
     }
 
+    public function listProjects(): array
+    {
+        $ssh = $this->connect();
+        $raw = $ssh->exec(
+            'for d in /var/www/*/; do ' .
+            '[ -d "${d}.git" ] && [ -f "${d}deploy.sh" ] && ' .
+            'printf "%s|%s|%s|%s\n" ' .
+            '"$(basename "$d")" ' .
+            '"$(echo "$d" | sed "s|/$||")" ' .
+            '"$(git -C "$d" rev-parse --abbrev-ref HEAD 2>/dev/null)" ' .
+            '"$(git -C "$d" log -1 --format="%h %s" 2>/dev/null)"; ' .
+            'done'
+        );
+
+        $projects = [];
+        foreach (explode("\n", trim($raw)) as $line) {
+            if (!$line) continue;
+            [$name, $path, $branch, $commit] = array_pad(explode('|', $line, 4), 4, '');
+            $projects[] = [
+                'name'      => $name,
+                'path'      => $path,
+                'deploy_sh' => $path . '/deploy.sh',
+                'branch'    => $branch ?: 'unknown',
+                'commit'    => $commit ?: 'No commits yet',
+            ];
+        }
+
+        return $projects;
+    }
+
     public function runDeploy(string $deployScript): string
     {
         $allowedPattern = '/^\/var\/www\/[a-zA-Z0-9_\-]+\/deploy\.sh$/';

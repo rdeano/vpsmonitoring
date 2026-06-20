@@ -15,8 +15,13 @@ class DeployController extends Controller
 
     public function index(): Response
     {
-        $projects = config('projects');
-        $history  = DeploymentLog::orderByDesc('deployed_at')->limit(20)->get();
+        try {
+            $projects = $this->ssh->listProjects();
+        } catch (\Throwable $e) {
+            $projects = [];
+        }
+
+        $history = DeploymentLog::orderByDesc('deployed_at')->limit(20)->get();
 
         return Inertia::render('Deploy', [
             'projects' => $projects,
@@ -26,17 +31,14 @@ class DeployController extends Controller
 
     public function deploy(Request $request): JsonResponse
     {
-        $request->validate(['project_name' => 'required|string']);
+        $request->validate([
+            'project_name' => ['required', 'string', 'regex:/^[a-zA-Z0-9_\-]+$/'],
+        ]);
 
-        $projects   = collect(config('projects'));
-        $project    = $projects->firstWhere('name', $request->project_name);
-
-        if (!$project) {
-            return response()->json(['success' => false, 'error' => 'Project not found.'], 404);
-        }
+        $deployScript = '/var/www/' . $request->project_name . '/deploy.sh';
 
         try {
-            $output = $this->ssh->runDeploy($project['deploy_sh']);
+            $output = $this->ssh->runDeploy($deployScript);
             $status = str_contains(strtolower($output), 'error') ? 'failed' : 'success';
         } catch (\Throwable $e) {
             $output = $e->getMessage();
@@ -44,7 +46,7 @@ class DeployController extends Controller
         }
 
         DeploymentLog::create([
-            'project_name' => $project['name'],
+            'project_name' => $request->project_name,
             'branch'       => 'main',
             'status'       => $status,
             'output'       => $output,

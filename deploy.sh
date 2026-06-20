@@ -1,27 +1,37 @@
 #!/bin/bash
-set -e
+cd /var/www/vpsmonitoring
 
-DEPLOY_DIR="/var/www/vpsmonitoring"
+git config --global --add safe.directory /var/www/vpsmonitoring
 
-echo "=== Starting deployment: $(date) ==="
+echo "Pulling latest changes..."
+git fetch origin main
+git reset --hard origin/main
 
-cd "$DEPLOY_DIR"
+echo "Installing PHP dependencies..."
+composer install --no-dev --optimize-autoloader --prefer-dist
 
-echo "--- Pulling latest code ---"
-git pull origin main
+echo "Installing Node dependencies..."
+npm install --legacy-peer-deps
 
-echo "--- Installing PHP dependencies ---"
-composer install --no-interaction --no-dev --optimize-autoloader --prefer-dist
+echo "Building frontend assets..."
+npm run build
 
-echo "--- Running migrations ---"
+echo "Running migrations..."
 php artisan migrate --force
 
-echo "--- Clearing and caching config ---"
+echo "Clearing caches..."
+php artisan config:clear
+php artisan cache:clear
+php artisan view:clear
+php artisan route:clear
+
+echo "Optimizing..."
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 
-echo "--- Setting permissions ---"
-chown -R www-data:www-data storage bootstrap/cache
+echo "Fixing permissions..."
+chown -R www-data:www-data /var/www/vpsmonitoring
+chmod -R 775 /var/www/vpsmonitoring/storage
 
-echo "=== Deployment complete: $(date) ==="
+echo "✅ vpsmonitoring deployed successfully!"
