@@ -17,7 +17,7 @@ php artisan view:clear
 php artisan route:clear
 
 echo "Installing PHP dependencies..."
-composer install --no-dev --optimize-autoloader --prefer-dist
+COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --prefer-dist
 
 echo "Running migrations..."
 php artisan migrate --force
