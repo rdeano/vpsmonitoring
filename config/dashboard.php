@@ -1,6 +1,9 @@
 <?php
 
 return [
+    'username' => env('DASHBOARD_USERNAME'),
+    'password' => env('DASHBOARD_PASSWORD'),
+
     'ssh' => [
         'host'     => env('DASHBOARD_SSH_HOST', '127.0.0.1'),
         'port'     => (int) env('DASHBOARD_SSH_PORT', 22),

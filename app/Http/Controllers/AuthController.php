@@ -23,8 +23,8 @@ class AuthController extends Controller
             'password' => 'required|string',
         ]);
 
-        $validUsername = env('DASHBOARD_USERNAME', 'admin');
-        $validPassword = env('DASHBOARD_PASSWORD', '');
+        $validUsername = config('dashboard.username');
+        $validPassword = config('dashboard.password');
 
         $usernameMatches = $request->username === $validUsername;
         $isBcrypt        = str_starts_with($validPassword, '$2y$') || str_starts_with($validPassword, '$2a$');
